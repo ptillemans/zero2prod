@@ -7,7 +7,7 @@ pub async fn health_check() -> HttpResponse {
 #[cfg(test)]
 mod tests {
     use crate::routes::health_check;
-    #[actix_rt::test]
+    #[tokio::test]
     async fn health_check_succeeds() {
         let response = health_check().await;
         // This requires changing the return type of `health_check`

@@ -4,7 +4,7 @@ use zero2prod::configuration;
 use zero2prod::startup::run;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> std::io::Result<()> {
     let subscriber = get_subscriber("zero2prod".into(), "info".into(), std::io::stdout);
     init_subscriber(subscriber);
@@ -17,7 +17,6 @@ async fn main() -> std::io::Result<()> {
     tracing::info!("Starting server on  address {}", address);
     let listener =
         TcpListener::bind(address).expect("Could not bind to port. Is the port already in use?");
-    let db_pool = PgPool::connect_lazy(&configuration.database.connection_string())
-        .expect("Failed to connect to postgres database");
+    let db_pool = PgPool::connect_lazy_with(configuration.database.with_db());
     run(listener, db_pool)?.await
 }
