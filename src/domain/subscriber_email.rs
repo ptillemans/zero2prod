@@ -46,7 +46,7 @@ mod tests {
     #[derive(Clone, Debug)]
     struct ValidEmailFixture(pub String);
     impl Arbitrary for ValidEmailFixture {
-        fn arbitrary(g: &mut Gen) -> Self {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let email = SafeEmail().fake_with_rng(g);
             Self(email)
         }
