@@ -1,5 +1,8 @@
-use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName};
-use actix_web::{web, HttpResponse};
+use crate::{
+    domain::{new_subscriber, NewSubscriber, SubscriberEmail, SubscriberName},
+    email_client::{self, EmailClient},
+};
+use actix_web::{http::header::HttpDate, web, HttpResponse};
 use chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -12,28 +15,37 @@ pub struct Subscription {
 
 #[tracing::instrument(
     name = "Adding a new subscriber",
-    skip(form, pool),
+    skip(form, pool, email_client),
     fields(
         subscriber_name = %form.name,
         subscriber_email = %form.email
     )
 )]
-
-pub async fn subscribe(form: web::Form<Subscription>, pool: web::Data<PgPool>) -> HttpResponse {
+pub async fn subscribe(
+    form: web::Form<Subscription>,
+    pool: web::Data<PgPool>,
+    email_client: web::Data<EmailClient>,
+) -> HttpResponse {
     let new_subscriber = match form.0.try_into() {
         Ok(subscriber) => subscriber,
         Err(_) => return HttpResponse::BadRequest().finish(),
     };
-    match insert_subscriber(&pool, &new_subscriber).await {
-        Ok(_) => {
-            tracing::info!("Saving new subscriber details in the database.");
-            HttpResponse::Ok().finish()
-        }
-        Err(e) => {
-            tracing::error!("Failed to execute query : {:?}", e);
-            HttpResponse::InternalServerError().finish()
-        }
-    }
+    if insert_subscriber(&pool, &new_subscriber).await.is_err() {
+        return HttpResponse::InternalServerError().finish();
+    };
+    if email_client
+        .send_email(
+            new_subscriber.email,
+            "Welcome!",
+            "Welcome to our newsletter!",
+            "Welcome to our newsletter!",
+        )
+        .await
+        .is_err()
+    {
+        return HttpResponse::InternalServerError().finish();
+    };
+    HttpResponse::Ok().finish()
 }
 
 impl TryFrom<Subscription> for NewSubscriber {
