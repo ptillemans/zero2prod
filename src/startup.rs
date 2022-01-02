@@ -1,37 +1,11 @@
 use crate::configuration::{DatabaseSettings, Settings};
 use crate::email_client::EmailClient;
-use crate::routes::{health_check, subscribe};
+use crate::routes::{confirm, health_check, subscribe};
 use actix_web::{dev::Server, web, App, HttpServer};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use std::net::TcpListener;
 use tracing_actix_web::TracingLogger;
-
-pub fn startup(configuration: &Settings) -> Result<Server, std::io::Error> {
-    let db_pool = get_connection_pool(&configuration.database);
-    let sender = configuration
-        .email_client
-        .sender()
-        .expect("Invalid sender email address");
-
-    let timeout = configuration.email_client.timeout();
-    let email_client = EmailClient::new(
-        configuration.email_client.base_url.to_owned(),
-        sender,
-        configuration.email_client.authorization_token.to_owned(),
-        timeout,
-    );
-
-    let address = format!(
-        "{}:{}",
-        configuration.application.host, configuration.application.port,
-    );
-    tracing::info!("Starting server on  address {}", address);
-    let listener =
-        TcpListener::bind(address).expect("Could not bind to port. Is the port already in use?");
-
-    run(listener, db_pool, email_client)
-}
 
 pub fn get_connection_pool(settings: &DatabaseSettings) -> PgPool {
     PgPoolOptions::new()
@@ -51,6 +25,7 @@ pub fn run(
             .wrap(TracingLogger::default())
             .route("/health_check", web::get().to(health_check))
             .route("/subscriptions", web::post().to(subscribe))
+            .route("/subscriptions/confirm", web::get().to(confirm))
             .app_data(db_pool.clone())
             .app_data(email_client.clone())
     })
