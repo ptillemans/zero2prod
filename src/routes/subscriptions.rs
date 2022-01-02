@@ -1,8 +1,8 @@
 use crate::{
-    domain::{new_subscriber, NewSubscriber, SubscriberEmail, SubscriberName},
-    email_client::{self, EmailClient},
+    domain::{NewSubscriber, SubscriberEmail, SubscriberName},
+    email_client::EmailClient,
 };
-use actix_web::{http::header::HttpDate, web, HttpResponse};
+use actix_web::{web, HttpResponse};
 use chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -11,6 +11,16 @@ use uuid::Uuid;
 pub struct Subscription {
     name: String,
     email: String,
+}
+
+impl TryFrom<Subscription> for NewSubscriber {
+    type Error = String;
+
+    fn try_from(form: Subscription) -> Result<Self, Self::Error> {
+        let name = SubscriberName::parse(form.name)?;
+        let email = SubscriberEmail::parse(form.email)?;
+        Ok(NewSubscriber { email, name })
+    }
 }
 
 #[tracing::instrument(
@@ -33,30 +43,32 @@ pub async fn subscribe(
     if insert_subscriber(&pool, &new_subscriber).await.is_err() {
         return HttpResponse::InternalServerError().finish();
     };
-    let confirmation_link = "https://myapi.com/subscriptions/confirm";
-    if email_client
-        .send_email(
-            new_subscriber.email,
-            "Welcome!",
-            &format!("Welcome to our newsletter!<br/>Click <a href=\"{}\">here</a> to confirm your subscription.",confirmation_link),
-            &format!("Welcome to our newsletter! Visit {} to confirm your subscription.", confirmation_link),
-        )
+    if send_confirmation_mail(&email_client, new_subscriber)
         .await
         .is_err()
     {
         return HttpResponse::InternalServerError().finish();
-    };
+    }
     HttpResponse::Ok().finish()
 }
 
-impl TryFrom<Subscription> for NewSubscriber {
-    type Error = String;
-
-    fn try_from(form: Subscription) -> Result<Self, Self::Error> {
-        let name = SubscriberName::parse(form.name)?;
-        let email = SubscriberEmail::parse(form.email)?;
-        Ok(NewSubscriber { email, name })
-    }
+#[tracing::instrument(
+    "Send a confirmation mail to a new subscriber",
+    skip(email_client, new_subscriber)
+)]
+pub async fn send_confirmation_mail(
+    email_client: &EmailClient,
+    new_subscriber: NewSubscriber,
+) -> Result<(), reqwest::Error> {
+    let confirmation_link = "https://myapi.com/subscriptions/confirm";
+    email_client
+        .send_email(
+            new_subscriber.email,
+            "Welcome!",
+            &format!("Welcome to our newsletter!<br/>Click <a href=\"{}\">here</a> to confirm your subscription.",confirmation_link),
+            &format!("Welcome to our newsletter!\n Visit {} to confirm your subscription.", confirmation_link),
+        )
+        .await
 }
 
 #[tracing::instrument(
