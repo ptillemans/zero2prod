@@ -1,9 +1,5 @@
-use sqlx::PgPool;
-use std::net::TcpListener;
-use tokio::time::timeout;
 use zero2prod::configuration;
-use zero2prod::email_client::EmailClient;
-use zero2prod::startup::{run, Application};
+use zero2prod::startup::Application;
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
 #[tokio::main]
