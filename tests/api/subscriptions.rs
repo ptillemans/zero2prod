@@ -46,6 +46,7 @@ async fn subscribe_persists_the_new_subscriber() {
         .expect("Failed to fetch saved subscription.");
     assert_eq!(saved.email, "ursula_le_guin@gmail.com");
     assert_eq!(saved.name, "le guin");
+    assert_eq!(saved.name, "pending_confirmation");
 }
 
 #[tokio::test]
