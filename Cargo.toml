@@ -33,6 +33,7 @@ serde-aux = "3.0.1"
 unicode-segmentation = "1.8.0"
 validator = "0.14.0"
 secrecy = { version = "0.8.0", features = ["serde"] }
+rand = "0.8.4"
 
 [dev-dependencies]
 claim = "0.5.0"

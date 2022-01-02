@@ -13,27 +13,6 @@ pub fn get_connection_pool(settings: &DatabaseSettings) -> PgPool {
         .connect_lazy_with(settings.with_db())
 }
 
-pub fn run(
-    listener: TcpListener,
-    db_pool: PgPool,
-    email_client: EmailClient,
-) -> Result<Server, std::io::Error> {
-    let db_pool = web::Data::new(db_pool);
-    let email_client = web::Data::new(email_client);
-    let server = HttpServer::new(move || {
-        App::new()
-            .wrap(TracingLogger::default())
-            .route("/health_check", web::get().to(health_check))
-            .route("/subscriptions", web::post().to(subscribe))
-            .route("/subscriptions/confirm", web::get().to(confirm))
-            .app_data(db_pool.clone())
-            .app_data(email_client.clone())
-    })
-    .listen(listener)?
-    .run();
-    Ok(server)
-}
-
 pub struct Application {
     port: u16,
     server: Server,
@@ -62,7 +41,12 @@ impl Application {
         tracing::info!("Starting server on  address {}", address);
         let listener = TcpListener::bind(address)?;
         let port = listener.local_addr().unwrap().port();
-        let server = run(listener, db_pool, email_client)?;
+        let server = run(
+            listener,
+            db_pool,
+            email_client,
+            configuration.application.base_url,
+        )?;
 
         Ok(Application { port, server })
     }
@@ -74,4 +58,31 @@ impl Application {
     pub async fn run_until_stopped(self) -> Result<(), std::io::Error> {
         self.server.await
     }
+}
+
+#[derive(Debug)]
+pub struct ApplicationBaseUrl(pub String);
+
+pub fn run(
+    listener: TcpListener,
+    db_pool: PgPool,
+    email_client: EmailClient,
+    base_url: String,
+) -> Result<Server, std::io::Error> {
+    let db_pool = web::Data::new(db_pool);
+    let email_client = web::Data::new(email_client);
+    let base_url = web::Data::new(ApplicationBaseUrl(base_url));
+    let server = HttpServer::new(move || {
+        App::new()
+            .wrap(TracingLogger::default())
+            .route("/health_check", web::get().to(health_check))
+            .route("/subscriptions", web::post().to(subscribe))
+            .route("/subscriptions/confirm", web::get().to(confirm))
+            .app_data(db_pool.clone())
+            .app_data(email_client.clone())
+            .app_data(base_url.clone())
+    })
+    .listen(listener)?
+    .run();
+    Ok(server)
 }
