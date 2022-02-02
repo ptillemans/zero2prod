@@ -1,7 +1,6 @@
 //! src/routes/subscriptions_confirm.rs
 
 use actix_web::{web, HttpResponse};
-use serde::Deserialize;
 use sqlx::PgPool;
 use uuid::Uuid;
 
