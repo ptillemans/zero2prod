@@ -1,7 +1,6 @@
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHasher};
 use once_cell::sync::Lazy;
-use sha3::Digest;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use wiremock::MockServer;
@@ -66,7 +65,7 @@ pub async fn spawn_app() -> TestApp {
         email_server,
         test_user: TestUser::generate(),
     };
-    test_app.test_user.store(&test_app.db_pool);
+    test_app.test_user.store(&test_app.db_pool).await;
     test_app
 }
 
@@ -151,7 +150,9 @@ impl TestUser {
     }
 
     async fn store(&self, pool: &PgPool) {
-        let salt = SaltString::generate(&mut rand::thread_rng()); // We don't care about the exact Argon2 parameters here // given that it's for testing purposes!
+        let salt = SaltString::generate(&mut rand::thread_rng());
+        // We don't care about the exact Argon2 parameters here
+        // given that it's for testing purposes!
         let password_hash = Argon2::default()
             .hash_password(self.password.as_bytes(), &salt)
             .unwrap()
