@@ -9,7 +9,8 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
     create_unconfirmed_subscriber(&app).await;
     Mock::given(any())
         .respond_with(ResponseTemplate::new(200))
-        // We assert that no request is fired at Postmark! .expect(0)
+        // We assert that no request is fired at Postmark!
+        .expect(0)
         .mount(&app.email_server)
         .await;
     // Act
