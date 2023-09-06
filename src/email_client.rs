@@ -149,7 +149,7 @@ mod tests {
             .await;
 
         // Assert
-        claim::assert_ok!(outcome)
+        claims::assert_ok!(outcome)
     }
 
     #[tokio::test]
@@ -170,7 +170,7 @@ mod tests {
             .await;
 
         // Assert
-        claim::assert_err!(outcome);
+        claims::assert_err!(outcome);
     }
 
     #[tokio::test]
@@ -192,7 +192,7 @@ mod tests {
             .await;
 
         // Assert
-        claim::assert_err!(outcome);
+        claims::assert_err!(outcome);
     }
 
     struct SendEmailBodyMatcher;

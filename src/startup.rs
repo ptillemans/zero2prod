@@ -9,7 +9,7 @@ use tracing_actix_web::TracingLogger;
 
 pub fn get_connection_pool(settings: &DatabaseSettings) -> PgPool {
     PgPoolOptions::new()
-        .connect_timeout(std::time::Duration::from_secs(2))
+        .acquire_timeout(std::time::Duration::from_secs(2))
         .connect_lazy_with(settings.with_db())
 }
 

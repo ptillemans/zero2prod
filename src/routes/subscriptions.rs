@@ -8,7 +8,7 @@ use actix_web::{web, HttpResponse, ResponseError};
 use anyhow::Context;
 use chrono::Utc;
 use rand::{distributions::Alphanumeric, thread_rng, Rng};
-use sqlx::{PgPool, Postgres, Transaction};
+use sqlx::{PgPool, Postgres, Executor};
 use uuid::Uuid;
 
 #[derive(serde::Deserialize)]
@@ -46,11 +46,11 @@ pub async fn subscribe(
         .begin()
         .await
         .context("Failed to acquire a Postgres connection from the pool.")?;
-    let subscriber_id = insert_subscriber(&mut transaction, &new_subscriber)
+    let subscriber_id = insert_subscriber(&mut *transaction, &new_subscriber)
         .await
         .context("Failed to insert the subscriber in the database.")?;
     let subscription_token = generate_subscription_token();
-    store_token(&mut transaction, subscriber_id, &subscription_token)
+    store_token(&mut *transaction, subscriber_id, &subscription_token)
         .await
         .context("Failed to store the subscription token in the database.")?;
     transaction
@@ -97,7 +97,7 @@ pub async fn send_confirmation_mail(
     skip(subscription, transaction)
 )]
 pub async fn insert_subscriber(
-    transaction: &mut Transaction<'_, Postgres>,
+    transaction: impl Executor<'_, Database = Postgres>,
     subscription: &NewSubscriber,
 ) -> Result<Uuid, sqlx::Error> {
     let subscriber_id = Uuid::new_v4();
@@ -130,7 +130,7 @@ fn generate_subscription_token() -> String {
     skip(subscription_token, transaction)
 )]
 pub async fn store_token(
-    transaction: &mut Transaction<'_, Postgres>,
+    transaction: impl Executor<'_, Database = Postgres>,
     subscriber_id: Uuid,
     subscription_token: &str,
 ) -> Result<(), StoreTokenError> {

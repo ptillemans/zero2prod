@@ -27,8 +27,9 @@ impl std::fmt::Display for SubscriberEmail {
 
 #[cfg(test)]
 mod tests {
+    use rand::{rngs::StdRng, SeedableRng};
     use super::SubscriberEmail;
-    use claim::assert_err;
+    use claims::assert_err;
     use fake::faker::internet::en::SafeEmail;
     use fake::Fake;
     use quickcheck::{Arbitrary, Gen};
@@ -52,8 +53,9 @@ mod tests {
     #[derive(Clone, Debug)]
     struct ValidEmailFixture(pub String);
     impl Arbitrary for ValidEmailFixture {
-        fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let email = SafeEmail().fake_with_rng(g);
+        fn arbitrary(g: &mut Gen) -> Self {
+            let mut rng = StdRng::seed_from_u64(u64::arbitrary(g));
+            let email = SafeEmail().fake_with_rng(&mut rng);
             Self(email)
         }
     }
